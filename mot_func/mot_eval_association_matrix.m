@@ -19,16 +19,18 @@ end
 % Association score matrix
 score_mat =zeros(length(Refer),length(Test));
 for i=1:length(Refer)   %tracking
-    
     refer_hist = Refer(i).hist(:)/sum(Refer(i).hist(:));
+    refer_grade_hist = Refer(i).gradhist(:);
     refer_h = Refer(i).h;
     refer_w = Refer(i).w;  
-    
+%     refer_localimg = Refer(i).localimg;
     
     for j=1:length(Test)  %detection
         
         % Appearance affinity
         test_hist = Test(j).hist(:)/sum(Test(j).hist(:));
+        % 梯度特征相似性
+        test_grad_hist = Test(j).gradhist(:);
         
         if (param.use_ILDA) && (ILDA.n_update ~= 0) && (nproj >2)
             proj = ILDA.DiscriminativeComponents;
@@ -48,7 +50,11 @@ for i=1:length(Refer)   %tracking
         test_w = Test(j).w;
         shp_sim = mot_shape_similarity(refer_h, refer_w, test_h, test_w);
         
-        score_mat(i,j) = mot_sim*app_sim*mot_sim;
+        % 梯度特征
+        grad_sim = mot_gradient_similarity(refer_grade_hist,test_grad_hist);
+        
+        score_mat(i,j) = app_sim * mot_sim * shp_sim * grad_sim;
+
     end
 end
 

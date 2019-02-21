@@ -5,17 +5,13 @@
 % All rights reserved.
 %%
 clc;
-clear all
 base = [pwd, '/'];
 addpath(genpath(base));
 
 mot_setting_params; % setting parameters
 
 disp('Loading detections...');
-% data_path = './Det/';
-% seq_name = 'ETH_Bahnhof_Demo_Det.mat';
-% file_name = strcat(data_path,seq_name); 
-% load(file_name); 
+
 %% loading detection results 
 
 if ~exist(param.detpath)
@@ -33,7 +29,7 @@ loadcmotdet;
 % 1:ILDA, 0: No-ILDA (faster)
 % To use ILDA, refer to README.
 
-param.use_ILDA = 1; 
+param.use_ILDA = 0; 
 % param.use_ILDA = 0;
 
 frame_start = 1;
@@ -60,17 +56,18 @@ for i=1:init_frame
 end
 
 %%
-%% 找前几帧间的目标关联关系，主要通过求前几帧目标框的重叠
-[Obs_grap] = mot_pre_association(detections,Obs_grap,frame_start,init_frame);
-st_fr = 1;
-en_fr = init_frame;
-%%
-
 for fr = 1:init_frame
     filename = strcat(img_path,img_List(fr).name);
     rgbimg = imread(filename);
     init_img_set{fr} = rgbimg;
 end
+
+%% 找前几帧间的目标关联关系，主要通过求前几帧目标框的重叠
+[Obs_grap] = mot_pre_association(init_img_set,detections,Obs_grap,frame_start,init_frame);
+st_fr = 1;
+en_fr = init_frame;
+%%
+
 
 [Trk,param,Obs_grap] = MOT_Initialization_Tracklets(init_img_set,Trk,detections,param,...
             Obs_grap,init_frame);
@@ -88,15 +85,12 @@ for fr = init_frame+1:frame_end
     % Local Association // confidence 
     [Trk, Obs_grap, Obs_info] = MOT_Local_Association(Trk, detections, Obs_grap, param, ILDA, fr, rgbimg);
     
-    
     % Global Association // Local association 
-    [Trk, Obs_grap] = MOT_Global_Association(Trk, Obs_grap, Obs_info, param, ILDA, fr);
-    
+    [Trk, Obs_grap] = MOT_Global_Association(Trk, Obs_grap, Obs_info, param, ILDA, fr,rgbimg);
     
     % Tracklet Confidence Update // In the paper, confidence
     [Trk] = MOT_Confidence_Update(Trk,param,fr, param.lambda); % 更新轨迹置信度数值
     [Trk] = MOT_Type_Update(rgbimg,Trk,param.type_thr,fr); % 更新轨迹信息，high or low 以及删除超出图片大小的不合理的点
-    
     
     % Tracklet State Update & Tracklet Model Update
     [Trk] = MOT_State_Update(Trk, param, fr);% 更新轨迹的外观模型和运动模型
@@ -111,8 +105,7 @@ for fr = init_frame+1:frame_end
         [ILDA] = MOT_Online_Appearance_Learning(rgbimg, img_path, img_List, fr, Trk, param, ILDA);
     end
     
-    
-    % Tracking Results
+    % Tracking Results 
     [Trk_sets] = MOT_Tracking_Results(Trk,Trk_sets,fr);
     disp([sprintf('Tracking:Frame_%04d',fr)]);
 end

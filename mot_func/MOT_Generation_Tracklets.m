@@ -6,7 +6,7 @@ function [Trk ,param, Obs_grap] = MOT_Generation_Tracklets(init_img_set,Trk,dete
 st_fr = cfr-param.show_scan; en_fr = cfr;
 ISO.meas= []; ISO.node = [];
 [ISO] = mot_non_associated(detections, Obs_grap, ISO,st_fr,en_fr);
-[ISO] = mot_pre_association_tracking(ISO,st_fr,en_fr);
+[ISO] = mot_pre_association_tracking(init_img_set,ISO,st_fr,en_fr);
 [Trk,param,Obs_grap] = mot_generation_tracklet(init_img_set,Trk,Obs_grap,...
     ISO.meas,param, ISO.node,cfr);% 将新出现的目标形成轨迹
 

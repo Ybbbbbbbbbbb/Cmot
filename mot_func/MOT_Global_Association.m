@@ -1,8 +1,8 @@
 
-function [Trk, Obs_grap] = MOT_Global_Association(Trk, Obs_grap, Obs_info, param, ILDA, fr)
+function [Trk, Obs_grap] = MOT_Global_Association(Trk, Obs_grap, Obs_info, param, ILDA, fr,rgbimg)
 %% Copyright (C) 2014 Seung-Hwan Bae
 %% All rights reserved.
-
+[W, H] = size(rgbimg(:,:,1));
 Refer =[]; Test= [];
 all_indx = 1:length(Trk);
 [low_indx] = Idx2Types(Trk,'Low');
@@ -10,6 +10,7 @@ all_indx = 1:length(Trk);
 yidx = find(Obs_grap(fr).iso_idx == 1); % 当前帧中在进行局部关联后，还剩下的没有被关联的目标
 
 yhist = Obs_info.yhist;
+ygradhist = Obs_info.gradhist;
 ystate = Obs_info.ystate;
 
 High_trk =[]; Low_trk=[]; Y_set = [];
@@ -25,6 +26,7 @@ if ~isempty(low_indx)
         Low_trk(ii).last_update = Trk(i).last_update;
         Low_trk(ii).end_time = Trk(i).efr; 
         Low_trk(ii).type = Trk(i).type;
+        Low_trk(ii).gradhist = Trk(i).gradhist;
     end
     
     % For tracklet with high confidence
@@ -41,26 +43,32 @@ if ~isempty(low_indx)
         
         High_trk(jj).last_update = Trk(j).last_update;
         High_trk(jj).init_time = Trk(j).ifr;
+        % 给轨迹加入梯度特征
+        High_trk(jj).gradhist = Trk(j).gradhist;
+        High_trk(jj).x = Trk(j).state{end}(1);
+        High_trk(jj).y = Trk(j).state{end}(2);
     end
     
     iso_label = [];
     if ~isempty(yidx)
-
         % For detections        
         for jj=1:length(yidx)
             j = yidx(jj);
             Y_set(jj).hist = yhist(:,:,j);
+            Y_set(jj).gradhist = ygradhist(:,j);
             Y_set(jj).pos = [ystate(1,j);ystate(2,j)];
             Y_set(jj).h =  ystate(4,j);
             Y_set(jj).w = ystate(3,j);
+            Y_set(jj).x = ystate(1,j);
+            Y_set(jj).y = ystate(2,j);
             iso_label = j;
         end
     end
     
     thr = param.obs_thr;
     
-    [score_trk] = mot_eval_association_matrix(Low_trk,High_trk,param,'Trk',ILDA);
-    [score_obs] = mot_eval_association_matrix(Low_trk, Y_set, param,'Obs', ILDA);
+    [score_trk] = mot_eval_association_matrix(Low_trk,High_trk,param,'Trk',ILDA, rgbimg);
+    [score_obs] = mot_eval_association_matrix(Low_trk, Y_set, param,'Obs', ILDA, rgbimg);
     score_mat = [score_trk, score_obs];
     [matching, Affinity] = mot_association_hungarian(score_mat, thr);
 
@@ -93,7 +101,10 @@ if ~isempty(low_indx)
                 Trk(y_idx).hyp.score(kk) = param.init_prob;
                 Trk(y_idx).hyp.ystate{kk}  = [];
             end
+            % color histogram
             Trk(y_idx).A_Model = alpha*(Trk(t_idx).A_Model)+(1-alpha)*(Trk(y_idx).A_Model);
+            % gradient
+            Trk(y_idx).gradhist = alpha*(Trk(t_idx).gradhist)+(1-alpha)*(Trk(y_idx).gradhist);
             
             % Motion Model Generation
             XX = [];
@@ -115,7 +126,6 @@ if ~isempty(low_indx)
                 Trk(y_idx).FMotion.X(:,ff) = XX;
                 Trk(y_idx).FMotion.P(:,:,ff) = PP;
             end
-           
             Trk(y_idx).label = Trk(t_idx).label;
             Trk(y_idx).type = 'High';
             rm_idx = [rm_idx, t_idx];
@@ -128,6 +138,7 @@ if ~isempty(low_indx)
             Trk(t_idx).hyp.ystate{fr} =  ystate(:,y_idx);
             Trk(t_idx).hyp.new_tmpl = yhist(:,:,y_idx);
             Trk(t_idx).last_update = fr;
+            Trk(t_idx).hyp.new_grad = ygradhist(:,y_idx);
             Obs_grap(fr).iso_idx(y_idx) = 0;
         end
 

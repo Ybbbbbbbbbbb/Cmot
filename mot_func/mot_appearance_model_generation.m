@@ -14,10 +14,10 @@ else
     hsv_img = img;
 end
 
+
 h_img = double(hsv_img(:,:,1))./double(max(max(img(:,:,1))));% 色调
 s_img = double(hsv_img(:,:,2))./double(max(max(img(:,:,2))));% 饱和度
 v_img = double(hsv_img(:,:,3))./double(max(max(img(:,:,3))));% 亮度
-
 
 initS = state;
 
@@ -46,6 +46,8 @@ for j=1:Nd
         cb_tmpl = all_tmpl{i}(:,:,j);
         cb_tmpl = cb_tmpl./max_val*nbins;
         if param.subregion ==1
+            test = hist(cb_tmpl, nbins);
+            test1 = hist(cb_tmpl, nbins)/param.subvec;
             cb_tmpl_hist = (hist(cb_tmpl,nbins)/param.subvec)';
         else
             cb_tmpl_hist = (hist(cb_tmpl,nbins)/param.subvec);

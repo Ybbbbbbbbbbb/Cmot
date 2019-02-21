@@ -9,16 +9,21 @@ function [Trk, Obs_grap, Obs_info] = MOT_Local_Association(Trk, detections, Obs_
 % fr:第几帧图片
 % rgbimg:图片
 %%
-
+[W, H] = size(rgbimg(:,:,1));
 Z_meas = detections(fr);
 ystate = [Z_meas.x, Z_meas.y, Z_meas.w, Z_meas.h]';
 Obs_grap(fr).iso_idx = ones(size(detections(fr).x));
 Obs_info.ystate = []; % ystate代表目标得信息(包括中心点得x y 目标狂得 宽 长)
 Obs_info.yhist  =[];
+Obs_info.gradhist  =[];
 if ~isempty(ystate)
     yhist = mot_appearance_model_generation(rgbimg, param, ystate); % 
+    grad_hist = mot_grad_model_generation(rgbimg, param, ystate);
+%     y_colorhist = color_hist_sim(rgbimg, param, ystate);
     Obs_info.ystate = ystate;
     Obs_info.yhist = yhist;
+    % 加入梯度特征
+    Obs_info.gradhist = grad_hist;
     
     tidx = Idx2Types(Trk,'High'); % 统计高置信度的轨迹存放在tidx(tidx中存放的数字可能就是轨迹的id)
     yidx = find(Obs_grap(fr).iso_idx == 1); % 检测到目标出现的索引
@@ -41,6 +46,10 @@ if ~isempty(ystate)
             Trk_high(ii).type = Trk(i).type;
             trk_label(ii) = Trk(i).label;
             conf_set = [conf_set,  Trk(i).Conf_prob];
+            % 加入梯度特征，加入存放得patch图片
+%             Trk_high(ii).localimg = Trk(i).localimg;
+            Trk_high(ii).gradhist = Trk(i).gradhist;
+
         end
         
         % For detections
@@ -52,13 +61,19 @@ if ~isempty(ystate)
             Z_set(jj).h =  ystate(4,j);% 目标得长
             Z_set(jj).w = ystate(3,j);% 目标的宽
             meas_label(jj) = j;% 目标存储的id
+            
+            % 修改目标或低置信度轨迹
+            Z_set(jj).x = ystate(1, j);
+            Z_set(jj).y = ystate(2, j);
+            % 添加目标得梯度特征
+            Z_set(jj).gradhist = grad_hist(:,j);
         end
         
         thr = param.obs_thr;
         
         
         %score_mat为轨迹与当前帧所有目标中的评估函数
-        [score_mat] = mot_eval_association_matrix(Trk_high, Z_set, param, 'Obs', ILDA);  % Trk_high: reliable tracklets, Z_set: detection results
+        [score_mat] = mot_eval_association_matrix(Trk_high, Z_set, param, 'Obs', ILDA, rgbimg);  % Trk_high: reliable tracklets, Z_set: detection results
         [matching, ~] = mot_association_hungarian(score_mat, thr);                       % hungarian solver.
         
         % Data association
@@ -72,6 +87,8 @@ if ~isempty(ystate)
                 Trk(ta_idx).hyp.ystate{fr} =  ystate(:,ya_idx);
                 Trk(ta_idx).hyp.new_tmpl = yhist(:,:,ya_idx);
                 Trk(ta_idx).last_update = fr;
+                % 给高置信度轨迹加入梯度直方图的统计情况
+                Trk(ta_idx).hyp.new_grad = grad_hist(:,ya_idx); 
                 Obs_grap(fr).iso_idx(ya_idx) = 0; %
                 
             end

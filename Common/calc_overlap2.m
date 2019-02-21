@@ -32,7 +32,8 @@ function [ov, ov_n1, ov_n2] = calc_overlap2(cur_det,prev_det,fr)
     w = xx2 - xx1 + 1;
     h = yy2 - yy1 + 1;
     
-    inds = find((w>0).*(h>0)); 
+    test = (w>0).*(h>0);
+    inds = find((w>0).*(h>0));  % 只有两者都大于0的时候发生重叠的情况。
     ov = zeros(1,n2);
     ov_n1 = zeros(1,n2);
     ov_n2 = zeros(1,n2);

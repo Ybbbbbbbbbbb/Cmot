@@ -50,7 +50,7 @@ img_List = dir(strcat(img_path,'*.jpg'));
 
 %% Common parameter
 param.label(1,:) = zeros(1,10000);      % 定义目标跟踪ID
-param.show_scan = 4;                    
+param.show_scan = 5;                    
 param.new_thr = param.show_scan + 1;    % Temporal window size for tracklet initialization
 param.obs_thr = 0.4;           % Threshold for local and global association 
 param.type_thr = 0.5;          % Threshold for changing a tracklet type

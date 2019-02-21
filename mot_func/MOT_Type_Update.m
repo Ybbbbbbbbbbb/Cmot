@@ -23,7 +23,7 @@ for i=1:length(Trk)
                 Trk(i).type = 'High';
             end
             efr = Trk(i).efr;
-            if abs(cfr - efr) >= max_frame
+            if abs(cfr - efr) >= max_frame % 如果轨迹间隔超过max_frame，则视为新轨迹
                 del_idx = [del_idx,i];
                 lb_idx= [lb_idx, Trk(i).label];
             end
